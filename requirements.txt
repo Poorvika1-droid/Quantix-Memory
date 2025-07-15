@@ -1,6 +1,4 @@
-Flask==3.0.0
-waitress
-ultralytics
-pillow
-flask-socketio
+Flask
+psycopg2-binary
+Flask-SQLAlchemy
 
