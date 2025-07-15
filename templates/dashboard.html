@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Quantix Memory</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .dashboard-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .camera-feed {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+
+        .status-active {
+            background-color: var(--success-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-inactive {
+            background-color: var(--danger-color);
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .alert-item {
+            background: linear-gradient(135deg, var(--warning-color), #f97316);
+            color: white;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(-100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .detected-item {
+            background: linear-gradient(135deg, var(--success-color), #059669);
+            color: white;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            display: inline-block;
+        }
+
+        .btn-control {
+            border-radius: 25px;
+            padding: 10px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-control:hover {
+            transform: translateY(-2px);
+        }
+
+        .navbar {
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .navbar .nav-link {
+            color: rgba(255, 255, 255, 0.9) !important;
+        }
+
+        .navbar .nav-link:hover,
+        .navbar .nav-link.active {
+            color: white !important;
+        }
+
+        .navbar .dropdown-menu {
+            background: rgba(31, 41, 55, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar .dropdown-item {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .navbar .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .navbar .dropdown-divider {
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .detection-status-card {
+            background: #fff !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
+            border: 1px solid #f3f4f6 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container">
+            <a class="navbar-brand fw-bold gradient-text" href="/home">
+                <i class="fas fa-brain me-2"></i>Quantix Memory
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/home">Home</a>
+                <a class="nav-link" href="/habits">Habits</a>
+                <a class="nav-link active" href="/dashboard">Dashboard</a>
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user-circle me-1"></i>{{ user.user_name }}
+                    </a>
+                    <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/logout"><i class="fas fa-sign-out-alt me-2"></i>Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Left Column: Camera Feed and Quick Actions -->
+            <div class="col-lg-7 mb-4">
+                <div class="dashboard-card mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4><i class="fas fa-video me-2"></i>Live Camera Feed</h4>
+                        <div>
+                            <span class="status-indicator" id="statusIndicator"></span>
+                            <span id="statusText">Inactive</span>
+                        </div>
+                    </div>
+                    <div class="camera-feed">
+                        <img id="cameraFeed" src="" alt="Camera Feed" class="img-fluid w-100" style="display: none;">
+                        <div id="cameraPlaceholder" class="text-center py-5">
+                            <i class="fas fa-camera fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Camera feed will appear here when detection is started</p>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-3">
+                        <button class="btn btn-success btn-control" id="startBtn">
+                            <i class="fas fa-play me-2"></i>Start Detection
+                        </button>
+                        <button class="btn btn-danger btn-control" id="stopBtn" disabled>
+                            <i class="fas fa-stop me-2"></i>Stop Detection
+                        </button>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-2">
+                            <button class="btn btn-outline-primary btn-control w-100" onclick="location.href='/habits'">
+                                <i class="fas fa-cog me-2"></i>Manage Habits
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <button class="btn btn-outline-success btn-control w-100" id="testDetection">
+                                <i class="fas fa-camera me-2"></i>Test Detection
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <button class="btn btn-outline-warning btn-control w-100" id="soundToggle">
+                                <i class="fas fa-volume-up me-2"></i>Sound Alerts: ON
+                            </button>
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <button class="btn btn-outline-info btn-control w-100" onclick="location.href='/home'">
+                                <i class="fas fa-home me-2"></i>Back to Home
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Right Column: Status, Detected, Missing -->
+            <div class="col-lg-5">
+                <div class="dashboard-card mb-4 detection-status-card">
+                    <h5><i class="fas fa-chart-line me-2"></i>Detection Status</h5>
+                    <div id="detectionStatus" class="text-center py-3">
+                        <i class="fas fa-question-circle fa-2x text-muted mb-2"></i>
+                        <p class="text-muted">Waiting to start detection...</p>
+                    </div>
+                </div>
+                <div class="dashboard-card mb-4">
+                    <h5><i class="fas fa-check-circle me-2"></i>Detected Items</h5>
+                    <div id="detectedItems" class="py-2">
+                        <p class="text-muted text-center">No items detected yet</p>
+                    </div>
+                </div>
+                <div class="dashboard-card">
+                    <h5><i class="fas fa-exclamation-triangle me-2"></i>Missing Items</h5>
+                    <div id="missingItems" class="py-2">
+                        <p class="text-muted text-center">All items present</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Modal -->
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Missing Items Alert
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="alertContent"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let isDetecting = false;
+
+        // DOM elements
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const detectionStatus = document.getElementById('detectionStatus');
+        const detectedItems = document.getElementById('detectedItems');
+        const missingItems = document.getElementById('missingItems');
+        const testDetection = document.getElementById('testDetection');
+        const soundToggle = document.getElementById('soundToggle');
+
+        // Camera detection variables
+        let streaming = false;
+        let stream = null;
+        let detectLoopActive = false;
+        let video = null;
+        let canvas = null;
+        let cameraFeedContainer = cameraFeed.parentElement;
+        let soundEnabled = true;
+
+        // Add a hidden video and canvas for live detection
+        function ensureVideoCanvas() {
+            if (!video) {
+                video = document.createElement('video');
+                video.setAttribute('width', '400');
+                video.setAttribute('height', '300');
+                video.setAttribute('autoplay', '');
+                video.style.display = 'none';
+                cameraFeedContainer.appendChild(video);
+            }
+            if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 300;
+                canvas.style.display = 'none';
+                cameraFeedContainer.appendChild(canvas);
+            }
+        }
+
+        // Start detection
+        startBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/start_detection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    isDetecting = true;
+                    updateStatus(true);
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    
+                    // Start camera and detection
+                    ensureVideoCanvas();
+                    cameraFeed.style.display = 'none';
+                    cameraPlaceholder.style.display = 'none';
+                    video.style.display = 'block';
+                    streaming = true;
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        video.srcObject = stream;
+                        detectLoopActive = true;
+                        detectLoop();
+                    } catch (err) {
+                        if (err.name === 'NotAllowedError' || err.name === 'NotFoundError') {
+                            alert('Camera access denied or not available.');
+                        }
+                        streaming = false;
+                        video.style.display = 'none';
+                        cameraPlaceholder.style.display = 'block';
+                        updateStatus(false);
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    }
+                }
+            } catch (error) {
+                console.error('Error starting detection:', error);
+                showNotification('Failed to start detection', 'error');
+            }
+        });
+
+        // Stop detection
+        stopBtn.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/stop_detection', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    isDetecting = false;
+                    updateStatus(false);
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                    
+                    // Stop camera and detection
+                    streaming = false;
+                    detectLoopActive = false;
+                    if (video) video.style.display = 'none';
+                    if (canvas) canvas.style.display = 'none';
+                    cameraFeed.style.display = 'none';
+                    cameraPlaceholder.style.display = 'block';
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        stream = null;
+                    }
+                }
+            } catch (error) {
+                console.error('Error stopping detection:', error);
+                showNotification('Failed to stop detection', 'error');
+            }
+        });
+
+        // Test detection with file upload
+        testDetection.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    try {
+                        const response = await fetch('/api/detect', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        
+                        const result = await response.json();
+                        updateDetectionResults(result);
+                    } catch (error) {
+                        console.error('Error testing detection:', error);
+                        showNotification('Failed to test detection', 'error');
+                    }
+                }
+            };
+            input.click();
+        });
+
+        // Sound toggle functionality
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundToggle.innerHTML = '<i class="fas fa-volume-up me-2"></i>Sound Alerts: ON';
+                soundToggle.className = 'btn btn-outline-warning btn-control';
+                showNotification('Sound alerts enabled', 'success');
+            } else {
+                soundToggle.innerHTML = '<i class="fas fa-volume-mute me-2"></i>Sound Alerts: OFF';
+                soundToggle.className = 'btn btn-outline-secondary btn-control';
+                showNotification('Sound alerts disabled', 'info');
+            }
+        });
+
+        // Update status indicators
+        function updateStatus(active) {
+            if (active) {
+                statusIndicator.className = 'status-indicator status-active';
+                statusText.textContent = 'Active';
+                detectionStatus.innerHTML = `
+                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                    <p class="text-success">Detection is running</p>
+                `;
+            } else {
+                statusIndicator.className = 'status-indicator status-inactive';
+                statusText.textContent = 'Inactive';
+                detectionStatus.innerHTML = `
+                    <i class="fas fa-question-circle fa-2x text-muted mb-2"></i>
+                    <p class="text-muted">Waiting to start detection...</p>
+                `;
+            }
+        }
+
+        // Update detection results
+        function updateDetectionResults(result) {
+            // Update detected items
+            if (result.detections && result.detections.length > 0) {
+                detectedItems.innerHTML = result.detections.map(item => 
+                    `<div class="detected-item">
+                        <i class="fas fa-check me-1"></i>${item.class_name} (${(item.confidence * 100).toFixed(1)}%)
+                    </div>`
+                ).join('');
+            } else {
+                detectedItems.innerHTML = '<p class="text-muted text-center">No items detected</p>';
+            }
+
+            // Update missing items
+            if (result.missing_items && result.missing_items.length > 0) {
+                missingItems.innerHTML = result.missing_items.map(item => 
+                    `<div class="alert-item">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>${item.item_name}</strong><br>
+                        <small>Priority: ${item.priority} | Location: ${item.location}</small>
+                    </div>`
+                ).join('');
+                
+                // Play sound alert for missing items
+                playMissingItemAlert();
+                
+                // Show alert modal
+                const alertContent = document.getElementById('alertContent');
+                alertContent.innerHTML = `
+                    <p>The following items are missing:</p>
+                    <ul>
+                        ${result.missing_items.map(item => `<li><strong>${item.item_name}</strong> (Priority: ${item.priority})</li>`).join('')}
+                    </ul>
+                `;
+                new bootstrap.Modal(document.getElementById('alertModal')).show();
+            } else {
+                missingItems.innerHTML = '<p class="text-success text-center">All items present ✓</p>';
+            }
+        }
+
+        // Play sound alert for missing items
+        function playMissingItemAlert() {
+            // Only play sound if enabled
+            if (!soundEnabled) {
+                showNotification('Missing items detected! Check the alerts.', 'warning');
+                return;
+            }
+            
+            try {
+                // Create audio context for sound generation
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Create alert sound (beep pattern)
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.4);
+                
+                // Also show notification
+                showNotification('Missing items detected! Check the alerts.', 'warning');
+            } catch (error) {
+                console.log('Audio not supported, showing notification instead');
+                showNotification('Missing items detected! Check the alerts.', 'warning');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Robust detection loop
+        async function detectLoop() {
+            const ctx = canvas.getContext('2d');
+            while (detectLoopActive) {
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg'));
+                const formData = new FormData();
+                formData.append('image', blob, 'frame.jpg');
+                try {
+                    const res = await fetch('/api/detect', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    // Draw bounding boxes
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    if (data.detections) {
+                        data.detections.forEach(det => {
+                            const [x1, y1, x2, y2] = det.bbox;
+                            ctx.strokeStyle = '#10b981';
+                            ctx.lineWidth = 2;
+                            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+                            ctx.font = '16px Arial';
+                            ctx.fillStyle = '#10b981';
+                            ctx.fillText(det.class_name, x1, y1 - 5);
+                        });
+                    }
+                    canvas.style.display = 'block';
+                    video.style.display = 'none';
+                    cameraFeed.style.display = 'none';
+                    cameraPlaceholder.style.display = 'none';
+                    // Show detected/missing items in the sidebar
+                    if (data.detections && data.detections.length > 0) {
+                        detectedItems.innerHTML = data.detections.map(item => 
+                            `<div class="detected-item">
+                                <i class="fas fa-check me-1"></i>${item.class_name} (${(item.confidence * 100).toFixed(1)}%)
+                            </div>`
+                        ).join('');
+                    } else {
+                        detectedItems.innerHTML = '<p class="text-muted text-center">No items detected</p>';
+                    }
+                    
+                    // Check for missing items and play sound alert
+                    if (data.missing_items && data.missing_items.length > 0) {
+                        missingItems.innerHTML = data.missing_items.map(item => 
+                            `<div class="alert-item">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>${item.item_name}</strong><br>
+                                <small>Priority: ${item.priority} | Location: ${item.location}</small>
+                            </div>`
+                        ).join('');
+                        
+                        // Play sound alert for missing items
+                        playMissingItemAlert();
+                    } else {
+                        missingItems.innerHTML = '<p class="text-success text-center">All items present ✓</p>';
+                    }
+                } catch (e) {
+                    // Show a message in the UI but keep the camera running
+                    detectedItems.innerHTML = '<p class="text-danger text-center">Detection error. Check server.</p>';
+                }
+                await new Promise(r => setTimeout(r, 500)); // Detect every 0.5 seconds
+            }
+        }
+
+        // Initialize status
+        updateStatus(false);
+    });
+    </script>
+</body>
+</html>
