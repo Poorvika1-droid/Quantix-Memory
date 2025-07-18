@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 import os
+import flask
+print("Flask version:", flask.__version__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'quantix_memory_ai_secret_key_2024')
@@ -145,6 +147,12 @@ def login_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
+@app.before_request
+def create_tables_once():
+    if not hasattr(app, 'tables_created'):
+        db.create_all()
+        app.tables_created = True
+
 @app.route('/')
 def splash():
     return render_template('splash.html')
@@ -272,4 +280,4 @@ if __name__ == '__main__':
     print("📱 Open your browser and go to: http://localhost:5000")
     print("🚀 Quantix Memory AI is ready! Register a new account to get started.")
     print("🎨 Beautiful splash page and login system active!")
-    app.run(debug=True) 
+    app.run(host='0.0.0.0', port=5000)
