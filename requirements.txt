@@ -2,4 +2,6 @@ Flask
 psycopg2-binary
 Flask-SQLAlchemy
 waitress
+gunicorn
+werkzeug
 

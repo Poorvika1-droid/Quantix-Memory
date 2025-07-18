@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 import os
 import flask
+from werkzeug.security import generate_password_hash, check_password_hash
 print("Flask version:", flask.__version__)
 
 app = Flask(__name__)
@@ -36,12 +37,11 @@ class Habit(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 def hash_password(password):
-    import hashlib
-    return hashlib.sha256(password.encode()).hexdigest()
+    return generate_password_hash(password)
 
 def verify_user(email, password):
-    user = User.query.filter_by(email=email, password_hash=hash_password(password)).first()
-    if user:
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(user.password_hash, password):
         user.last_login = datetime.now(timezone.utc)
         db.session.commit()
         return user
@@ -273,11 +273,12 @@ def stop_detection():
     return jsonify({'status': 'stopped'})
 
 if __name__ == '__main__':
-    # Only needed for first run or after DB reset
+    # Only needed for first run or after DB reset (local dev only)
     with app.app_context():
         db.create_all()
     print("🧠 Quantix Memory AI - User Authentication Version")
     print("📱 Open your browser and go to: http://localhost:5000")
     print("🚀 Quantix Memory AI is ready! Register a new account to get started.")
     print("🎨 Beautiful splash page and login system active!")
-    app.run(host='0.0.0.0', port=5000)
+    # For production, use: gunicorn app_simple:app
+    # app.run(host='0.0.0.0', port=5000)
