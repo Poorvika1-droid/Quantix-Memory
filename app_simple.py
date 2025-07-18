@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 
 app = Flask(__name__)
@@ -10,12 +10,16 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Only needed for first run or after DB reset
+# with app.app_context():
+#     db.create_all()
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     name = db.Column(db.String(120))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_login = db.Column(db.DateTime)
     habits = db.relationship('Habit', backref='user', lazy=True)
 
@@ -27,7 +31,7 @@ class Habit(db.Model):
     time_of_day = db.Column(db.String(120))
     location = db.Column(db.String(120))
     priority = db.Column(db.Integer, default=1)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
 def hash_password(password):
     import hashlib
@@ -36,7 +40,7 @@ def hash_password(password):
 def verify_user(email, password):
     user = User.query.filter_by(email=email, password_hash=hash_password(password)).first()
     if user:
-        user.last_login = datetime.utcnow()
+        user.last_login = datetime.now(timezone.utc)
         db.session.commit()
         return user
     return None
@@ -81,7 +85,6 @@ def detect_objects_in_image(image_data, user_id):
             image_data = base64.b64decode(image_data.split(',')[1])
         else:
             image_data = base64.b64decode(image_data)
-    data_length = len(image_data)
     # Simulate detection logic
     if 'phone' in habit_names and random.random() > 0.2:
         detections.append(create_detection('phone', 0.85, 0.9))
@@ -141,10 +144,6 @@ def login_required(f):
         return f(*args, **kwargs)
     decorated_function.__name__ = f.__name__
     return decorated_function
-
-@app.before_first_request
-def create_tables():
-    db.create_all()
 
 @app.route('/')
 def splash():
@@ -266,8 +265,11 @@ def stop_detection():
     return jsonify({'status': 'stopped'})
 
 if __name__ == '__main__':
+    # Only needed for first run or after DB reset
+    with app.app_context():
+        db.create_all()
     print("🧠 Quantix Memory AI - User Authentication Version")
     print("📱 Open your browser and go to: http://localhost:5000")
     print("🚀 Quantix Memory AI is ready! Register a new account to get started.")
     print("🎨 Beautiful splash page and login system active!")
-    app.run(host='0.0.0.0', port=5000) 
+    app.run(debug=True) 
