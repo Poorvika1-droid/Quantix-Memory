@@ -3,8 +3,10 @@ from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 import os
 import flask
+import importlib.metadata
 from werkzeug.security import generate_password_hash, check_password_hash
-print("Flask version:", flask.__version__)
+import logging
+print("Flask version:", importlib.metadata.version('flask'))
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'quantix_memory_ai_secret_key_2024')
@@ -147,11 +149,17 @@ def login_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
-@app.before_request
-def create_tables_once():
-    if not hasattr(app, 'tables_created'):
-        db.create_all()
-        app.tables_created = True
+@app.before_first_request
+def create_tables():
+    db.create_all()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+
+@app.errorhandler(500)
+def internal_error(error):
+    logging.exception("Internal server error: %s", error)
+    return render_template('500.html', error=error), 500
 
 @app.route('/')
 def splash():
@@ -162,15 +170,19 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
-        user = verify_user(email, password)
-        if user:
-            session.permanent = True
-            session['user_id'] = user.id
-            session['user_email'] = user.email
-            session['user_name'] = user.name
-            return redirect(url_for('index'))
-        else:
-            flash('Invalid email or password', 'error')
+        try:
+            user = verify_user(email, password)
+            if user:
+                session.permanent = True
+                session['user_id'] = user.id
+                session['user_email'] = user.email
+                session['user_name'] = user.name
+                return redirect(url_for('index'))
+            else:
+                flash('Invalid email or password', 'error')
+        except Exception as e:
+            logging.exception("Login error: %s", e)
+            flash('An unexpected error occurred during login.', 'error')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -180,17 +192,21 @@ def register():
         email = request.form.get('email')
         password = request.form.get('password')
         confirm_password = request.form.get('confirm_password')
-        if password != confirm_password:
-            flash('Passwords do not match', 'error')
-        elif password and len(password) < 6:
-            flash('Password must be at least 6 characters', 'error')
-        else:
-            user = create_user(email, password, name)
-            if user:
-                flash('Registration successful! Please login.', 'success')
-                return redirect(url_for('login'))
+        try:
+            if password != confirm_password:
+                flash('Passwords do not match', 'error')
+            elif password and len(password) < 6:
+                flash('Password must be at least 6 characters', 'error')
             else:
-                flash('Email already exists', 'error')
+                user = create_user(email, password, name)
+                if user:
+                    flash('Registration successful! Please login.', 'success')
+                    return redirect(url_for('login'))
+                else:
+                    flash('Email already exists', 'error')
+        except Exception as e:
+            logging.exception("Registration error: %s", e)
+            flash('An unexpected error occurred during registration.', 'error')
     return render_template('register.html')
 
 @app.route('/logout')
@@ -280,5 +296,4 @@ if __name__ == '__main__':
     print("📱 Open your browser and go to: http://localhost:5000")
     print("🚀 Quantix Memory AI is ready! Register a new account to get started.")
     print("🎨 Beautiful splash page and login system active!")
-    # For production, use: gunicorn app_simple:app
-    # app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000)

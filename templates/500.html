@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internal Server Error</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8fafc; color: #222; }
+        .container { margin-top: 10vh; text-align: center; }
+        .error-icon { font-size: 5rem; color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-icon">&#9888;</div>
+        <h1 class="display-4">500 Internal Server Error</h1>
+        <p class="lead">Sorry, something went wrong on our end.<br>
+        Please try again later or contact support if the problem persists.</p>
+        {% if error %}<div class="text-muted small">{{ error }}</div>{% endif %}
+        <a href="/" class="btn btn-primary mt-4">Go Home</a>
+    </div>
+</body>
+</html> 
