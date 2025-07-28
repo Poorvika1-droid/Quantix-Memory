@@ -149,9 +149,12 @@ def login_required(f):
     decorated_function.__name__ = f.__name__
     return decorated_function
 
-@app.before_first_request
 def create_tables():
-    db.create_all()
+    with app.app_context():
+        db.create_all()
+
+# Create tables when the application starts
+create_tables()
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
